@@ -1,54 +1,71 @@
-import java.util.*;
-import java.util.stream.Stream;
+import java.util.NoSuchElementException;
 
 public class MinHeap {
     private final int[] m_heapArray;
-    private final int m_capacity;
     private int m_heapSize;
+    private final int m_capacity;
 
-    MinHeap(final int capacity) throws IndexOutOfBoundsException{
-        if (capacity <= 0) throw new IndexOutOfBoundsException("capaticy variable have to be greater than 0");
+    MinHeap(final int capacity) throws IllegalArgumentException{
+        if (capacity <= 0) throw new IllegalArgumentException("capacity must be greater than 0");
         m_heapArray = new int[capacity];
-        m_capacity = capacity;
         m_heapSize = 0;
+        m_capacity = capacity;
     }
+
+    // getters
+    public int[] getHeapArray() { return m_heapArray; }
+    public int getHeapSize() { return m_heapSize; }
+    public int getCapacity() { return m_capacity; }
+
+    // In this DS must be following methods:
+    // getMin()
+    // extractMin()
+    // decreaseKey(final int index, final int newValue)
+    // insert(final int newValue)
+    // delete(final int index)
+    // print()
 
     public int getMin() throws NoSuchElementException{
-        if (!(m_heapSize > 0)) throw new NoSuchElementException("There's no elements in MinHeap");
+        if (m_heapSize == 0) throw new NoSuchElementException("There's no elements in the heap");
         return m_heapArray[0];
     }
-
     public int extractMin() throws NoSuchElementException{
-        if (!(m_heapSize > 0)) throw new NoSuchElementException("There's no elements in MinHeap");
-        final int res = m_heapArray[0];
-        if (m_heapSize > 1){
-            m_heapArray[0] = m_heapArray[m_heapSize-1];
+        final int min = getMin();
+        if (m_heapSize == 1){
+            --m_heapSize;
+        } else {
+            m_heapArray[0] = m_heapArray[m_heapSize - 1];
+            minHeapify(0);
+            --m_heapSize;
         }
-        --m_heapSize;
-        minHeapify(0);
-        return res;
+        return min;
     }
-
-    public void decreaseKey(final int index, final int newValue) throws IndexOutOfBoundsException, IllegalArgumentException{
-        if (index < 0 || index >= m_heapSize) throw new IndexOutOfBoundsException("Incorrect index was passed");
-        if (newValue >= m_heapArray[index]) throw new IllegalArgumentException("newValue must be less than replacable value");
-        m_heapArray[index] = newValue;
-        elementLifting(index);
+    public void decreaseKey(final int keyIndex, final int newValue) throws IllegalArgumentException, NoSuchElementException{
+        if (keyIndex < 0) throw new IllegalArgumentException("keyIndex must be greater or equal than 0");
+        if (keyIndex >= m_heapSize) throw new NoSuchElementException("There's no element by index keyIndex");
+        if (newValue >= m_heapArray[keyIndex]) throw new IllegalArgumentException("newValue must be less than current value of element by index keyIndex");
+        if (keyIndex == 0){
+            m_heapArray[0] =  newValue;
+        } else {
+            m_heapArray[keyIndex] = newValue;
+            elementLifting(keyIndex);
+        }
     }
-
     public void insert(final int newValue) throws OutOfMemoryError{
-        if (m_heapSize + 1 <= m_capacity){
-            ++m_heapSize;
-            m_heapArray[m_heapSize - 1] = newValue;
-            elementLifting(m_heapSize - 1);
-        } else throw new OutOfMemoryError("no remainig memory");
+        if (m_heapSize == m_capacity) throw new OutOfMemoryError("There's no more allocated memory for this heap to add another one element");
+        ++m_heapSize;
+        m_heapArray[m_heapSize - 1] = newValue;
+        elementLifting(m_heapSize - 1);
     }
-
-    public void delete(final int index) throws NoSuchElementException{
-        if (index < 0 || index >= m_heapSize) throw new NoSuchElementException("Incorrect index, no such element in the heap");
-        m_heapArray[index] = m_heapArray[0] - 1;
-        elementLifting(index);
-        extractMin();
+    public void delete(final int elementIndex) throws NoSuchElementException, IllegalArgumentException{
+        if (elementIndex < 0) throw new IllegalArgumentException("elementIndex cannot be less than 0");
+        if (elementIndex >= m_heapSize) throw new NoSuchElementException("There's no element in the heap by index elementIndex");
+        if (elementIndex == 0) extractMin();
+        else{
+            m_heapArray[elementIndex] = getMin() - 1;
+            elementLifting(elementIndex);
+            extractMin();
+        }
     }
 
     public void print(){
@@ -58,48 +75,49 @@ public class MinHeap {
         System.out.println();
     }
 
-    private void elementLifting(int index){
-        while (index > 0 && m_heapArray[parentIndex(index)] > m_heapArray[index]){
-            swap(index, parentIndex(index));
-            index = parentIndex(index);
-        }
-    }
-
-    private void minHeapify(final int index){
-        final List<Integer> childIndexes = Stream.of(leftChildIndex(index), rightChildIndex(index)).filter(Objects::nonNull).toList();
-        if (!childIndexes.isEmpty()){
-            int minIndex = 0;
-            for (final int i : childIndexes){
-                if (m_heapArray[i] < m_heapArray[minIndex]) minIndex = i;
-            }
-            if (index != minIndex){
-                swap(index, minIndex);
-                minHeapify(minIndex);
+    private void elementLifting(final int elementIndex){
+        if (elementIndex > 0){
+            final int parentIndex = getParentIndex(elementIndex);
+            if (m_heapArray[parentIndex] > m_heapArray[elementIndex]){
+                swapElements(parentIndex, elementIndex);
+                elementLifting(parentIndex);
             }
         }
     }
 
-    private void swap(final int index1, final int index2){
+    private void minHeapify(final int elementIndex){
+        final int leftChildIndex = getLeftChildIndex(elementIndex);
+        final int rightChildIndex = getRightChildIndex(elementIndex);
+
+        int minIndex = elementIndex;
+        if (leftChildIndex < m_heapSize){
+            if (m_heapArray[leftChildIndex] < m_heapArray[minIndex]){
+                minIndex = leftChildIndex;
+            }
+        }
+        if (rightChildIndex < m_heapSize){
+            if (m_heapArray[rightChildIndex] < m_heapArray[minIndex]){
+                minIndex = rightChildIndex;
+            }
+        }
+        if (elementIndex != minIndex){
+            swapElements(elementIndex, minIndex);
+            minHeapify(minIndex);
+        }
+    }
+
+    private int getLeftChildIndex(final int elementIndex){
+        return (elementIndex * 2) + 1;
+    }
+    private int getRightChildIndex(final int elementIndex){
+        return (elementIndex * 2) + 2;
+    }
+    private int getParentIndex(final int elementIndex) { return (elementIndex - 1) / 2; }
+
+    private void swapElements(final int index1, final int index2){
         final int buf = m_heapArray[index1];
         m_heapArray[index1] = m_heapArray[index2];
         m_heapArray[index2] = buf;
     }
-
-    private Integer parentIndex(final int index){
-        return (index - 1) / 2;
-    }
-
-    private Integer leftChildIndex(final int index){
-        final int res = (2 * index) + 1;
-        if (res < m_heapSize) return res;
-        return null;
-    }
-    private Integer rightChildIndex(final int index){
-        final int res = (2 * index) + 2;
-        if (res < m_heapSize) return res;
-        return null;
-    }
-
-
 
 }
